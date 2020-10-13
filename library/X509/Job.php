@@ -24,6 +24,7 @@ class Job
      * @var Connection
      */
     private $db;
+    private $dbTool;
     private $loop;
     private $pendingTargets = 0;
     private $totalTargets = 0;
@@ -38,6 +39,7 @@ class Job
     public function __construct($name, Connection $db, ConfigObject $jobDescription, array $snimap, $parallel)
     {
         $this->db = $db;
+        $this->dbTool = new DbTool($db);
         $this->jobDescription = $jobDescription;
         $this->snimap = $snimap;
         $this->parallel = $parallel;
@@ -201,14 +203,14 @@ class Job
                         (new Select())
                             ->columns(['id'])
                             ->from('x509_target')
-                            ->where(['ip = ?' => static::binary($target->ip), 'port = ?' => $target->port, 'hostname = ?' => $target->hostname ])
+                            ->where(['ip = ?' => $this->dbTool->marshalBinary(static::binary($target->ip)), 'port = ?' => $target->port, 'hostname = ?' => $target->hostname ])
                     )->fetch();
 
                     if ($row === false) {
                         $this->db->insert(
                             'x509_target',
                             [
-                                'ip'       => static::binary($target->ip),
+                                'ip'       => $this->dbTool->marshalBinary(static::binary($target->ip)),
                                 'port'     => $target->port,
                                 'hostname' => $target->hostname
                             ]
@@ -294,7 +296,7 @@ class Job
                 $this->db->update(
                     'x509_target',
                     ['latest_certificate_chain_id' => null],
-                    ['ip = ?' => static::binary($target->ip), 'port = ?' => $target->port]
+                    ['ip = ?' => $this->dbTool->marshalBinary(static::binary($target->ip)), 'port = ?' => $target->port]
                 );
 
                 $this->finishTarget();
